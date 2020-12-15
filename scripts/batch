@@ -2,5 +2,5 @@
 set -e
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 source $DIR/setup
-java -Djava.library.path=$DIR  -Xms10G -Xmx20G  -XX:MaxDirectMemorySize=1000m -jar $DIR/../target/clusterj-ndb-micro-benchmark-1.0-jar-with-dependencies.jar -schema $db -dbHost $dbHost -clientId $clientId -rowsPerTx $rowsPerTx -numThreads $numThreads -microBenchType BATCH  -nonDistributedPKOps -bmDuration $bmDuration  $skipPrompt -runNumber $runNumber $updateData
+java -Djava.library.path=$DIR  -Xms10G -Xmx20G -XX:+UnlockExperimentalVMOptions -XX:+UnlockDiagnosticVMOptions -XX:+ShowHiddenFrames -XX:+PreserveFramePointer -XX:MaxDirectMemorySize=1000m -jar $DIR/../target/clusterj-ndb-micro-benchmark-1.0-jar-with-dependencies.jar -schema $db -dbHost $dbHost -clientId $clientId -rowsPerTx $rowsPerTx -numThreads $numThreads -microBenchType BATCH  -nonDistributedPKOps -bmDuration $bmDuration  $skipPrompt -runNumber $runNumber $updateData
 #nonDistributedBatch

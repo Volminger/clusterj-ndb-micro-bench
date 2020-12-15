@@ -5,12 +5,14 @@ public class Row {
     private int id;
     private int data1;
     private int data2;
+    private byte[] longdata;
 
     public Row(int pratitionKey, int id, int data1, int data2) {
         this.pratitionKey = pratitionKey;
         this.id = id;
         this.data1 = data1;
         this.data2 = data2;
+        this.longdata = null;
     }
 
     public int getPratitionKey() {
@@ -43,6 +45,14 @@ public class Row {
 
     public void setData2(int data2) {
         this.data2 = data2;
+    }
+
+    public byte[] getLongData() {
+	return longdata;
+    }
+
+    public void setLongData(byte[] longdata) {
+	this.longdata = longdata;
     }
 
     @Override

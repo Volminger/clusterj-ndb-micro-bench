@@ -202,6 +202,7 @@ public class MicroBenchMain {
     props.setProperty("com.mysql.clusterj.connect.timeout.after", "20");
     props.setProperty("com.mysql.clusterj.max.transactions", "1024");
     props.setProperty("com.mysql.clusterj.connection.pool.size", "1");
+    props.setProperty("com.mysql.clusterj.connection.recv.thread.activation.threshold", "1");
     sf = ClusterJHelper.getSessionFactory(props);
   }
 

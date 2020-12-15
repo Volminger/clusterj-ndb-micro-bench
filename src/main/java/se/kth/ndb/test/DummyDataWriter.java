@@ -51,6 +51,11 @@ public class DummyDataWriter implements Runnable {
     row.setPartitionId(id);
     row.setData1(id);
     row.setData2(id);
+    byte[] byte_data = new byte[1000];
+    int i;
+    for (i = 0; i < 1000; i++)
+      byte_data[i] = 23;
+    row.setLongData(byte_data);
     session.savePersistent(row);
   }
 }

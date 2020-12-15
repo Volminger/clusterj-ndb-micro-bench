@@ -12,6 +12,8 @@ import org.apache.commons.math3.stat.descriptive.SynchronizedDescriptiveStatisti
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class Worker implements Callable {
   final AtomicInteger successfulOps;
@@ -48,6 +50,7 @@ public class Worker implements Callable {
 
   @Override
   public Object call() {
+    Queue<Table> q_table = new LinkedList();
     Session dbSession = sf.getSession();
     bmStartTime = System.currentTimeMillis();
     lastPrintTime = bmStartTime;
@@ -55,7 +58,7 @@ public class Worker implements Callable {
       try {
         long startTime = System.nanoTime();
         dbSession.currentTransaction().begin();
-        performOperation(dbSession);
+        performOperation(dbSession, q_table);
         dbSession.currentTransaction().commit();
         long opExeTime=(System.nanoTime()-startTime);
         latency.addValue(opExeTime);
@@ -71,6 +74,15 @@ public class Worker implements Callable {
         }
       }
     }
+    ArrayList<Table> rows_to_release = new ArrayList<Table>();
+    while (true)
+    {
+      Table row = q_table.poll();
+      if (row == null)
+        break;
+      rows_to_release.add(row);
+    }
+    release(dbSession, rows_to_release);
     dbSession.close();
     return null;
   }
@@ -79,7 +91,7 @@ public class Worker implements Callable {
   protected void finalize() throws Throwable {
   }
 
-  public void performOperation(Session session) throws Exception {
+  public void performOperation(Session session, Queue<Table> q_table) throws Exception {
     switch (microBenchType) {
       case PK_D:
       case PK_ND:
@@ -87,7 +99,7 @@ public class Worker implements Callable {
         return;
       case BATCH_D:
       case BATCH_ND:
-        batchTest(session);
+        batchTest(session, q_table);
         return;
       case PPIS:
         ppisTest(session);
@@ -140,36 +152,45 @@ public class Worker implements Callable {
     return readRows;
   }
 
-  void batchTest(Session session){
-    List<Table> readRows = batchRead(session);
+  void batchTest(Session session, Queue<Table> q_table){
+    List<Table> readRows = batchRead(session, q_table);
     if(updateRows){
       for(Table row : readRows){
         row.setData1(counter++);
         row.setData2(counter++);
       }
       session.updatePersistentAll(readRows);
-      release(session, readRows);
+      //release(session, readRows);
+    }
+    else
+    {
+      //release(session, readRows);
+    }
+    for (Table row : readRows)
+    {
+      q_table.add(row);
     }
   }
 
-  List<Table> batchRead(Session session) {
+  List<Table> batchRead(Session session, Queue<Table> q_table) {
     int index = rand.nextInt(dataSet.size());
     Set<Row> set  = dataSet.get(index);
-
+    
     List<Table> batch = new ArrayList<Table>();
     for (Row row : set) {
-      Table dbRow = getTableInstance(session);
+      Table dbRow = getTableInstance(session, q_table);
       dbRow.setId(row.getId());
       dbRow.setPartitionId(row.getPratitionKey());
       dbRow.setData1(-1);
       dbRow.setData2(-1);
+      dbRow.setLongData(null);
       batch.add(dbRow);
     }
 
     Object key[] = new Object[2];
-    Table row = (Table)batch.get(0);
-    key[0] = row.getPartitionId();
-    key[1] = row.getId();
+    Table loc_row = (Table)batch.get(0);
+    key[0] = loc_row.getPartitionId();
+    key[1] = loc_row.getId();
     session.setPartitionKey(Table.class, key);
 
     session.setLockMode(lockMode);
@@ -178,7 +199,7 @@ public class Worker implements Callable {
     session.flush();
 
     for(Object obj : batch){
-      row = (Table) obj;
+      Table row = (Table) obj;
       if(row.getData1() == -1 || row.getData2() == -1 ){
         throw new IllegalStateException("Wrong data read");
       }
@@ -301,12 +322,20 @@ public class Worker implements Callable {
 
   protected void saveSet(Session session, Set<Row> rows){
     session.currentTransaction().begin();
+    byte[] byte_data = new byte[1000];
+    int i;
+    for (i = 0; i < 1000; i++)
+    {
+      byte_data[0] = 66;
+    }
     for(Row row : rows){
       Table dbRow = getTableInstance(session);
       dbRow.setId(row.getId());
       dbRow.setPartitionId(row.getPratitionKey());
       dbRow.setData1(row.getData1()); // setting the data partition id, used in FTS, and IS
       dbRow.setData2(row.getData2()); // setting the data partition id, used in FTS, and IS
+      
+      dbRow.setLongData(byte_data);
       session.makePersistent(dbRow);
     }
     session.currentTransaction().commit();
@@ -346,6 +375,13 @@ public class Worker implements Callable {
   }
 
   private Table getTableInstance(Session session) {
+      return session.newInstance(Table.class);
+  }
+
+  private Table getTableInstance(Session session, Queue<Table> q_table) {
+      Table row = q_table.poll();
+      if (row != null)
+        return row;
       return session.newInstance(Table.class);
   }
 

@@ -20,9 +20,12 @@ public interface Table {
   int getData1();
   void setData1(int data);
 
-
   @Column(name = "data2")
   int getData2();
   void setData2(int data);
+
+  @Column(name = "longdata")
+  byte[] getLongData();
+  void setLongData(byte[] longdata);
 }
 
